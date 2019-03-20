@@ -84,8 +84,24 @@ devtools::install_github("ropensci/drake") # development
 - [Contribute code](https://github.com/ropensci/drake/pulls).
 - [Discuss at rOpenSci.org](https://discuss.ropensci.org).
 
-## Thanks
+## Today's example
 
+<br>
+<br>
+<ul style = "float: left: width: 49%">
+<img src = "./images/edgar.jpg" style="border: none; box-shadow: none; height: 150px">
+<li><a href = "https://github.com/edgararuiz">Edgar Ruiz</a></li>
+<li><a href = "https://github.com/sol-eng/tensorflow-w-r/blob/master/workflow/tensorflow-drake.Rmd">example code</a></li>
+</ul>
+<ul style = "float: right; width: 49%">
+<img src = "./images/matt.jpg" style="border: none; box-shadow: none; height: 150px">
+<li><a href = "https://github.com/mdancho84">Matt Dancho</a></li>
+<li><a href = "https://blogs.rstudio.com/tensorflow/posts/2018-01-11-keras-customer-churn/">blog post</a></li>
+</ul>
+
+## Development
+
+<br>
 <ul style = "float: left: width: 49%">
 <img src = "./images/ropensci.png" style="border: none; box-shadow: none; height: 150px">
 <li><a href = "https://github.com/maelle">Maëlle Salmon</a></li>
@@ -97,17 +113,18 @@ devtools::install_github("ropensci/drake") # development
 <li><a href = "https://github.com/stefaniebutland">Stefanie Butland</a></li>
 </ul>
 <ul style = "float: right; width: 49%">
-<br>
-<br>
 <li><a href = "https://github.com/jarad">Jarad Niemi</a></li>
 <li><a href = "https://github.com/krlmlr">Kirill Müller</a></li>
+<li><a href = "https://github.com/HenrikBengtsson">Henrik Bengtsson</a></li>
+<li><a href = "https://github.com/milesmcbain">Miles McBain</a></li>
+<li><a href = "https://github.com/pat-s">Patrick Schratz</a></li>
 <li><a href = "https://github.com/kendonB">Kendon Bell</a></li>
 <li><a href = "https://github.com/AlexAxthelm">Alex Axthelm</a></li>
 <li><a href = "https://github.com/dapperjapper">Jasper Clarkberg</a></li>
-<li><a href = "https://github.com/HenrikBengtsson">Henrik Bengtsson</a></li>
 <li><a href = "https://github.com/dfalster">Daniel Falster</a></li>
 <li><a href = "https://github.com/mrchypark">Chan-Yub Park</a></li>
 <li><a href = "https://github.com/tiernanmartin">Tiernan Martin</a></li>
+
 </ul>
 
 ```{r, include = FALSE}
