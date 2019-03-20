@@ -1,140 +1,115 @@
 ---
-title: "Automated workflow"
-output: html_notebook
+title: "Reproducible computation at scale in R"
+subtitle: "With a deep learning example"
+author: Will Landau
+output: 
+  revealjs::revealjs_presentation:
+    transition: none
+    reveal_options:
+      slideNumber: true
+    template: include/template.html
+    includes:
+      in_header: include/header.html
+    css: style.css
 ---
 
-## Creating a plan
-
-```{r setup, include = FALSE}
-library(drake)
-library(keras)
-library(tidyverse)
-library(rsample)
-library(recipes)
-library(yardstick)
-```
-
-
-```{r}
-library(drake)
-library(keras)
-library(tidyverse)
-library(rsample)
-library(recipes)
-library(yardstick)
-
-plan <- drake_plan(
-  customer_data = read_csv("customer_churn.csv"),
-  train_test_split = initial_split(
-    customer_data,
-    prop = 0.3
-  ),
-  train_tbl = training(train_test_split),
-  test_tbl = testing(train_test_split),
-  rec_obj = train_tbl %>%
-    recipe(Churn ~ .) %>%
-    step_rm(customerID) %>%
-    step_naomit(all_outcomes(), all_predictors()) %>%
-    step_discretize(tenure, options = list(cuts = 6)) %>%
-    step_log(TotalCharges) %>%
-    step_mutate(Churn = ifelse(Churn == "Yes", 1, 0)) %>%
-    step_dummy(all_nominal(), -all_outcomes()) %>%
-    step_center(all_predictors(), -all_outcomes()) %>%
-    step_scale(all_predictors(), -all_outcomes()) %>%
-    prep(),
-  save_rec_obj = save(rec_obj, file = "rec_obj.RData"),
-  x_train_tbl = juice(rec_obj, all_predictors(), composition = "matrix"),
-  y_train_vec = juice(rec_obj, all_outcomes()) %>% pull(),
-  baked_test = bake(rec_obj, test_tbl),
-  x_test_tbl = baked_test %>%
-    select(-Churn) %>%
-    as.matrix(),
-  y_test_vec = baked_test %>%
-    select(Churn) %>%
-    pull(),
-  model_keras = keras_model_sequential() %>%
-    layer_dense(
-      units = 16,
-      kernel_initializer = "uniform",
-      activation = "relu",
-      input_shape = ncol(x_train_tbl)
-    ) %>%
-    layer_dropout(rate = 0.1) %>%
-    layer_dense(
-      units = 16,
-      kernel_initializer = "uniform",
-      activation = "relu"
-    ) %>%
-    layer_dropout(rate = 0.1) %>%
-    layer_dense(
-      units = 1,
-      kernel_initializer = "uniform",
-      activation = "sigmoid"
-    ) %>%
-    compile(
-      optimizer = "adam",
-      loss = "binary_crossentropy",
-      metrics = c("accuracy")
-    ),
-  fit_keras = fit(
-    object = model_keras,
-    x = x_train_tbl,
-    y = y_train_vec,
-    batch_size = 50,
-    epochs = 35,
-    validation_split = 0.30,
-    verbose = 0
-  ),
-  plot_fit_keras = plot(fit_keras),
-  yhat_keras_class_vec = model_keras %>%
-    predict_classes(x_test_tbl) %>%
-    as.factor() %>%
-    fct_recode(yes = "1", no = "0"),
-  yhat_keras_prob_vec =
-    model_keras %>%
-      predict_proba(x_test_tbl) %>%
-      as.vector(),
-  test_truth = y_test_vec %>%
-    as.factor() %>%
-    fct_recode(yes = "1", no = "0"),
-  estimates_keras_tbl = tibble(
-    truth = test_truth,
-    estimate = yhat_keras_class_vec,
-    class_prob = yhat_keras_prob_vec
-  ),
-  confusion_matrix = estimates_keras_tbl %>%
-    conf_mat(truth, estimate),
-  save_model = keras:::export_savedmodel.keras.engine.training.Model(model_keras, "newmodel")
+```{r, include = FALSE}
+suppressMessages(suppressWarnings(library(drake)))
+suppressMessages(suppressWarnings(library(tidyverse)))
+unlink(".RData")
+clean(destroy = TRUE, verbose = FALSE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning = TRUE,
+  error = TRUE
 )
 ```
 
-```{r, include = FALSE}
-clean(destroy = TRUE)
-make(plan, seed = 100)
-```
+## Purpose: manage long runtimes
+
+<img src = "./images/infographic.svg" style="border: none; box-shadow: none;">
+
+## Data analysis workflows can be complicated.
+<img src = "./images/workflow.png" style="border: none; box-shadow: none;">
+
+## When you go back and change something...
+<img src = "./images/change.png" style="border: none; box-shadow: none;">
+
+## ...everything downstream is **no longer valid**.
+<img src = "./images/downstream.png" style="border: none; box-shadow: none;">
+
+## Do you rerun **everything** from scratch?
+
+- Takes too long.
+- Too frustrating.
+
+<img src = "./images/sisyphus.svg" style="border: none; box-shadow: none; height: 375px">
+
+<div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/275842/sisyphus-overcoming-silhouette">https://openclipart.org/detail/275842/sisyphus-overcoming-silhouette</a></div>
+
+## Do you manually hunt for pieces to update?
+
+- Messy and prone to human error.
+- Not reproducible.
+
+<img src = "./images/mess.svg" style="border: none; box-shadow: none; height: 400px">
+
+<div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/216179/messy-desk">https://openclipart.org/detail/216179/messy-desk</a></div>
+
+
+## Pipeline toolkits solve this problem.
+
+- Sophisticated, vibrant, active space of tools: [github.com/pditommaso/awesome-pipeline](https://github.com/pditommaso/awesome-pipeline).
+- Most are language-agnostic or designed for Python.
+- [**`drake`**](https://github.com/ropensci/drake) is the most aggressively designed for R.
+    - A focus on ordinary R functions and variables rather than cumbersome files.
+    - Heavy use of the data frame, even as a substitute for the  traditional [Makefile](https://www.gnu.org/software/make).
+    - Native [tidy evaluation](https://tidyeval.tidyverse.org) support.
+    - A [domain-specific language (DSL)](http://adv-r.had.co.nz/dsl.html) for [creating large workflows](https://ropenscilabs.github.io/drake-manual/plans.html#large-plans).
+
+
+
+
+## Resources
 
 ```{r, eval = FALSE}
+install.packages("drake")                  # release
+devtools::install_github("ropensci/drake") # development
+```
+
+- [Quick reference guide](https://ropensci.github.io/drake/)
+- [User manual and tutorials](https://ropenscilabs.github.io/drake-manual/)
+- [Example workflows](https://github.com/wlandau/drake-examples) (download the code with [`drake_example()`](https://ropensci.github.io/drake/reference/drake_example.html)).
+- [File an issue](https://github.com/ropensci/drake/issues).
+- [Contribute code](https://github.com/ropensci/drake/pulls).
+- [Discuss at rOpenSci.org](https://discuss.ropensci.org).
+
+## Thanks
+
+<ul style = "float: left: width: 49%">
+<img src = "./images/ropensci.png" style="border: none; box-shadow: none; height: 150px">
+<li><a href = "https://github.com/maelle">Maëlle Salmon</a></li>
+<li><a href = "https://github.com/benmarwick">Ben Marwick</a></li>
+<li><a href = "https://github.com/jules32">Julia Lowndes</a></li>
+<li><a href = "https://github.com/gothub">Peter Slaughter</a></li>
+<li><a href = "https://github.com/jennybc">Jenny Bryan</a></li>
+<li><a href = "https://github.com/richfitz">Rich FitzJohn</a></li>
+<li><a href = "https://github.com/stefaniebutland">Stefanie Butland</a></li>
+</ul>
+<ul style = "float: right; width: 49%">
+<br>
+<br>
+<li><a href = "https://github.com/jarad">Jarad Niemi</a></li>
+<li><a href = "https://github.com/krlmlr">Kirill Müller</a></li>
+<li><a href = "https://github.com/kendonB">Kendon Bell</a></li>
+<li><a href = "https://github.com/AlexAxthelm">Alex Axthelm</a></li>
+<li><a href = "https://github.com/dapperjapper">Jasper Clarkberg</a></li>
+<li><a href = "https://github.com/HenrikBengtsson">Henrik Bengtsson</a></li>
+<li><a href = "https://github.com/dfalster">Daniel Falster</a></li>
+<li><a href = "https://github.com/mrchypark">Chan-Yub Park</a></li>
+<li><a href = "https://github.com/tiernanmartin">Tiernan Martin</a></li>
+</ul>
+
+```{r, include = FALSE}
 clean(destroy = TRUE)
-make(plan, seed = 100)
 ```
-
-## Dependency graph
-
-This shows how each step in the workflow is related to each other.
-
-```{r}
-config <- drake_config(plan)
-vis_drake_graph(config)
-```
-
-## Pull data from the plan
-
-```{r}
-readd(plot_fit_keras)
-```
-
-```{r}
-readd(confusion_matrix)
-```
-
-
