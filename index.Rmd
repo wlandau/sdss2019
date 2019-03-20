@@ -14,8 +14,20 @@ output:
 ---
 
 ```{r, include = FALSE}
-suppressMessages(suppressWarnings(library(drake)))
-suppressMessages(suppressWarnings(library(tidyverse)))
+packages <- c(
+  "drake",
+  "keras",
+  "recipes",
+  "rsample",
+  "tidyverse",
+  "yardstick"
+)
+purrr::walk(
+  packages,
+  function(pkg) {
+    suppressMessages(suppressWarnings(library(pkg, character.only = TRUE)))
+  }
+)
 unlink(".RData")
 clean(destroy = TRUE, verbose = FALSE)
 knitr::opts_chunk$set(
@@ -87,37 +99,61 @@ data/
 
 ## `packages.R`
 
-```{r}
-
+```{r, eval = FALSE}
+library(drake)
+library(keras)
+library(recipes)
+library(rsample)
+library(tidyverse)
+library(yardstick)
 ```
 
 ## `functions.R`
 
-```{r}
+```{r, eval = FALSE}
+create_recipe <- function(train_tbl) {
+  # ... 
+}
 
+compile_model <- function() {
+  # ...
+}
 ```
 
 ## `plan.R`
 
-```{r}
-
+```{r, eval = FALSE}
+drake_plan(
+  # ... 
+)
 ```
 
 ## `make.R`
 
 ```{r, eval = FALSE}
-
+source("R/packages.R")
+source("R/functions.R")
+source("R/plan.R")
+make(plan)
 ```
 
 ## Run the project.
 
-```{r}
+```{r, echo = FALSE}
+source("R/packages.R")
+source("R/functions.R")
+source("R/plan.R")
+```
 
+```{r, eval = FALSE}
+make(plan)
 ```
 
 ## Inspect the results.
 
-## Update the workflow.
+## Update some code.
+
+## Visualize the workflow.
 
 ## Refresh the results.
 
