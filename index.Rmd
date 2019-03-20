@@ -56,7 +56,6 @@ knitr::opts_chunk$set(
 
 <div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/216179/messy-desk">https://openclipart.org/detail/216179/messy-desk</a></div>
 
-
 ## Pipeline toolkits solve this problem.
 
 - Sophisticated, vibrant, active space of tools: [github.com/pditommaso/awesome-pipeline](https://github.com/pditommaso/awesome-pipeline).
@@ -67,8 +66,80 @@ knitr::opts_chunk$set(
     - Native [tidy evaluation](https://tidyeval.tidyverse.org) support.
     - A [domain-specific language (DSL)](http://adv-r.had.co.nz/dsl.html) for [creating large workflows](https://ropenscilabs.github.io/drake-manual/plans.html#large-plans).
 
+## Example workflow: customer churn
 
+## Use deep learning in R.
 
+## Project files
+
+<br>
+<br>
+
+```
+make.R
+R/
+├── packages.R
+├── functions.R
+└── plan.R
+data/
+└── data.csv
+```
+
+## `packages.R`
+
+```{r}
+
+```
+
+## `functions.R`
+
+```{r}
+
+```
+
+## `plan.R`
+
+```{r}
+
+```
+
+## `make.R`
+
+```{r, eval = FALSE}
+
+```
+
+## Run the project.
+
+```{r}
+
+```
+
+## Inspect the results.
+
+## Update the workflow.
+
+## Refresh the results.
+
+## Evidence of reproducibility.
+
+## High-performance computing.
+
+```{r slurmclustermq, eval = FALSE}
+# Use a template file and options.
+drake_hpc_template_file("slurm_clustermq.tmpl") # Modify by hand.
+options(
+  clustermq.scheduler = "slurm",
+  clustermq.template = "slurm_clustermq.tmpl"
+)
+
+# make() is the basically the same.
+make(plan, jobs = 2, parallelism = "clustermq")
+```
+
+## High-performance computing.
+
+<script src="https://fast.wistia.com/embed/medias/ycczhxwkjw.jsonp" async></script><script src="https://fast.wistia.com/assets/external/E-v1.js" async></script><div class="wistia_responsive_padding" style="padding:56.21% 0 0 0;position:relative;"><div class="wistia_responsive_wrapper" style="height:100%;left:0;position:absolute;top:0;width:100%;"><div class="wistia_embed wistia_async_ycczhxwkjw videoFoam=true" style="height:100%;position:relative;width:100%"><div class="wistia_swatch" style="height:100%;left:0;opacity:0;overflow:hidden;position:absolute;top:0;transition:opacity 200ms;width:100%;"><img src="https://fast.wistia.com/embed/medias/ycczhxwkjw/swatch" style="filter:blur(5px);height:100%;object-fit:contain;width:100%;" alt="" onload="this.parentNode.style.opacity=1;" /></div></div></div></div>
 
 ## Resources
 
@@ -79,7 +150,7 @@ devtools::install_github("ropensci/drake") # development
 
 - [Quick reference guide](https://ropensci.github.io/drake/)
 - [User manual and tutorials](https://ropenscilabs.github.io/drake-manual/)
-- [Example workflows](https://github.com/wlandau/drake-examples) (download the code with [`drake_example()`](https://ropensci.github.io/drake/reference/drake_example.html)).
+- [Example workflows](https://github.com/wlandau/drake-examples) (see also [`drake_example()`](https://ropensci.github.io/drake/reference/drake_example.html)).
 - [File an issue](https://github.com/ropensci/drake/issues).
 - [Contribute code](https://github.com/ropensci/drake/pulls).
 - [Discuss at rOpenSci.org](https://discuss.ropensci.org).
