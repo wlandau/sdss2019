@@ -24,7 +24,7 @@ library(recipes)
 library(yardstick)
 
 plan <- drake_plan(
-  customer_data = read_csv("customer_churn.csv"),
+  customer_data = read_csv("data/customer_churn.csv"),
   train_test_split = initial_split(
     customer_data,
     prop = 0.3
