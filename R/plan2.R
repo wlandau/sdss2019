@@ -3,7 +3,8 @@ plan <- drake_plan(
     initial_split(prop = 0.3),
   churn_recipe = prepare_recipe(data),
   history = fit_model(data, churn_recipe, file_out("model.h5")),
-  history_plot = plot(history),
+  history_plot = plot(history) +
+    theme_bw(),
   conf_matrix = get_conf_matrix(data, churn_recipe, file_in("model.h5")),
   report_step = rmarkdown::render(
     knitr_in("results.Rmd"),

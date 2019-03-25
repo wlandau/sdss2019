@@ -13,8 +13,8 @@ output:
     css: style.css
 ---
 
-```{r, include = FALSE}
-options(warnPartialMatchArgs = FALSE)
+```{r c1, include = FALSE}
+options(warnPartialMatchArgs = FALSE, drake_make_menu = FALSE)
 packages <- c(
   "drake",
   "keras",
@@ -23,13 +23,13 @@ packages <- c(
   "tidyverse",
   "yardstick"
 )
+unlink(".RData")
 purrr::walk(
   packages,
   function(pkg) {
     suppressMessages(suppressWarnings(library(pkg, character.only = TRUE)))
   }
 )
-unlink(".RData")
 clean(destroy = TRUE, verbose = FALSE)
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -79,9 +79,18 @@ knitr::opts_chunk$set(
     - Native [tidy evaluation](https://tidyeval.tidyverse.org) support.
     - A [domain-specific language (DSL)](http://adv-r.had.co.nz/dsl.html) for [creating large workflows](https://ropenscilabs.github.io/drake-manual/plans.html#large-plans).
 
-## Example workflow: customer churn
+## Example workflow: deep learning customer churn
 
-## Use deep learning in R.
+<br>
+
+- Goal: predict customers who cancel their subscriptions with a telecom company.
+- Data: [IBM Watson Telco Customer Churn dataset](https://www.ibm.com/communities/analytics/watson-analytics-blog/predictive-insights-in-the-telco-customer-churn-data-set/).
+
+<br>
+
+<img src = "./images/combine.png" style="border: none; box-shadow: none; height: 200px">
+
+<div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/90739/newplus">https://openclipart.org/detail/90739/newplus</a>, <a href="https://github.com/rstudio/keras">https://github.com/rstudio/keras</a></div>
 
 ## Project files
 
@@ -95,12 +104,13 @@ R/
 ├── functions.R
 └── plan.R
 data/
-└── data.csv
+└── customer_churn.csv
 ```
 
 ## `packages.R`
 
-```{r, eval = FALSE}
+```{r c2, eval = FALSE}
+# packages.R
 library(drake)
 library(keras)
 library(recipes)
@@ -111,60 +121,183 @@ library(yardstick)
 
 ## `functions.R`
 
-```{r, eval = FALSE}
-create_recipe <- function(train_tbl) {
+```{r c3, eval = FALSE}
+# functions.R
+prepare_recipe <- function(data) {
   # ... 
 }
 
-compile_model <- function() {
+define_model <- function(churn_recipe) {
+  # ...
+}
+
+fit_model <- function(data, churn_recipe, model_file) {
+  # ...
+}
+
+get_conf_matrix <- function(data, churn_recipe, model_file) {
   # ...
 }
 ```
 
 ## `plan.R`
 
-```{r, eval = FALSE}
-drake_plan(
-  # ... 
+```{r c4}
+# plan.R
+plan <- drake_plan(
+  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
+    initial_split(prop = 0.3),
+  churn_recipe = prepare_recipe(data),
+  history = fit_model(data, churn_recipe, file_out("model.h5")),
+  history_plot = plot(history),
+  conf_matrix = get_conf_matrix(data, churn_recipe, file_in("model.h5")),
+  report_step = rmarkdown::render(
+    knitr_in("results.Rmd"),
+    output_file = file_out("results.html"),
+    quiet = TRUE
+  )
 )
 ```
 
-## `make.R`
+## The plan is a data frame.
 
-```{r, eval = FALSE}
-source("R/packages.R")
-source("R/functions.R")
-source("R/plan.R")
-make(plan)
+```{r c5}
+plan
 ```
+
+## The workflow
+
+<img src = "./images/tensorflowflow.png" style="border: none; box-shadow: none; height: 250px">
 
 ## Run the project.
 
-```{r, echo = FALSE}
+```{r c6}
+# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R")
-```
 
-```{r, eval = FALSE}
 make(plan)
 ```
 
 ## Inspect the results.
 
-## Update some code.
+```{r c7, out.width = "50%", out.height = "50%", fig.width = 5, fig.height = 4}
+readd(history_plot) # See also loadd()
+```
 
-## Visualize the workflow.
+## Update the plan.
+
+```{r c8}
+# plan.R
+plan <- drake_plan(
+  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
+    initial_split(prop = 0.3),
+  churn_recipe = prepare_recipe(data),
+  history = fit_model(data, churn_recipe, file_out("model.h5")),
+  history_plot = plot(history) +
+    theme_bw(), # modification
+  conf_matrix = get_conf_matrix(data, churn_recipe, file_in("model.h5")),
+  report_step = rmarkdown::render(
+    knitr_in("results.Rmd"),
+    output_file = file_out("results.html"),
+    quiet = TRUE
+  )
+)
+```
+
+```{r c8write, echo = FALSE}
+tmp <- file.copy("R/plan.R", "R/tmp.R", overwrite = TRUE)
+tmp <- file.copy("R/plan2.R", "R/plan.R", overwrite = TRUE)
+```
+
+## `vis_drake_graph()`
+
+<img src = "./images/visdrakegraph.png" style="border: none; box-shadow: none; height: 300px">
+
+<ul style="text-align: left">
+<li>See also `drake_ggraph()` and `sankey_drake_graph()`</li>
+</ul>
 
 ## Refresh the results.
 
+```{r c9}
+# make.R
+source("R/packages.R")
+source("R/functions.R")
+source("R/plan.R") # modified
+
+make(plan)
+```
+
+## See updated results.
+
+```{r c7updated, out.width = "50%", out.height = "50%", fig.width = 5, fig.height = 4}
+readd(history_plot)
+```
+
+## Continue iterating to improve the model...
+
+```{r c7updated2}
+readd(conf_matrix)
+```
+
 ## Evidence of reproducibility.
+
+```{r c10}
+# make.R
+source("R/packages.R")
+source("R/functions.R")
+source("R/plan.R")
+
+make(plan)
+```
+
+<ul style="text-align: left">
+<li>See also `outdated()`.</li>
+</ul>
+
+
+## Scale up the number of models.
+
+```{r, plan2}
+data_source_index <- seq_len(25)
+plan <- drake_plan(
+  data = target(
+    download_dataset(source),
+    transform = map(source = !!data_source_index)
+  ),
+  history = target(
+    fit_my_model(data, batch_size = bz, rate = lr, dropout = dr),
+    transform = cross(
+      data,
+      bz = c(8, 16, 32, 64),
+      lr = c(1e-5, 1e-4, 1e-3),
+      dr = c(0.2, 0.3, 0.4, 0.5)
+    )
+  ),
+  best = target(
+    get_best_model(history),
+    transform = combine(history)
+  )
+)
+```
+
+## Scale up the number of models.
+
+```{r, plan3}
+plan
+```
 
 ## High-performance computing.
 
-```{r slurmclustermq, eval = FALSE}
-# Use a template file and options.
-drake_hpc_template_file("slurm_clustermq.tmpl") # Modify by hand.
+```{r c11, eval = FALSE}
+# make.R
+
+# template file with configuration
+drake_hpc_template_file("slurm_clustermq.tmpl")
+
+# Use SLURM resource manager with the template.
 options(
   clustermq.scheduler = "slurm",
   clustermq.template = "slurm_clustermq.tmpl"
@@ -180,14 +313,15 @@ make(plan, jobs = 2, parallelism = "clustermq")
 
 ## Resources
 
-```{r, eval = FALSE}
+```{r c12, eval = FALSE}
 install.packages("drake")                  # release
 devtools::install_github("ropensci/drake") # development
 ```
 
-- [Quick reference guide](https://ropensci.github.io/drake/)
-- [User manual and tutorials](https://ropenscilabs.github.io/drake-manual/)
-- [Example workflows](https://github.com/wlandau/drake-examples) (see also [`drake_example()`](https://ropensci.github.io/drake/reference/drake_example.html)).
+- [Today's code](https://github.com/wlandau/drake-examples/tree/master/tensorflow): `drake_example("tensorflow")`
+- [Reference website](https://ropensci.github.io/drake/)
+- [Full user manual](https://ropenscilabs.github.io/drake-manual/)
+- [Example workflows](https://github.com/wlandau/drake-examples)
 - [File an issue](https://github.com/ropensci/drake/issues).
 - [Contribute code](https://github.com/ropensci/drake/pulls).
 - [Discuss at rOpenSci.org](https://discuss.ropensci.org).
@@ -235,6 +369,9 @@ devtools::install_github("ropensci/drake") # development
 
 </ul>
 
-```{r, include = FALSE}
+```{r c13, include = FALSE}
+tmp <- file.copy("R/plan.R", "R/plan2.R", overwrite = TRUE)
+tmp <- file.copy("R/tmp.R", "R/plan.R", overwrite = TRUE)
+unlink("R/tmp.R")
 clean(destroy = TRUE)
 ```
