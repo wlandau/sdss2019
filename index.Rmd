@@ -9,6 +9,23 @@ output:
 
 layout: true
 
+<style>
+.remark-slide-content:after {
+    content: "Copyright Eli Lilly and Company";
+    position: absolute;
+    bottom: -5px;
+    left: 20px;
+    height: 40px;
+    width: 100%;
+    font-family: Helvetica, Arial, sans-serif;
+    color: gray;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+</style>
+
+---
+
 ```{r c1, include = FALSE}
 options(
   warnPartialMatchArgs = FALSE,
@@ -34,9 +51,11 @@ purrr::walk(
 clean(destroy = TRUE, verbose = FALSE)
 knitr::opts_chunk$set(
   collapse = TRUE,
-  warning = TRUE,
-  error = TRUE,
-  eval = FALSE
+  fig.align = "center",
+  fig.width = 10,
+  fig.height = 7,
+  out.width = "80%",
+  out.height = "80%"
 )
 ```
 
@@ -152,7 +171,6 @@ data/
 ## `packages.R`
 
 ```{r c2, eval = FALSE}
-# packages.R
 library(drake)
 library(keras)
 library(recipes)
@@ -166,7 +184,6 @@ library(yardstick)
 ## `functions.R`
 
 ```{r c3, eval = FALSE}
-# functions.R
 prepare_recipe <- function(data) {
   # ... 
 }
@@ -189,22 +206,18 @@ get_conf_matrix <- function(data, churn_recipe, model_file) {
 ## `plan.R`
 
 ```{r c4}
-# plan.R
 plan <- drake_plan(
-  data = read_csv( #<<
-    file_in("data/customer_churn.csv"),
-    col_types = cols()
-  ) %>%
+  data = read_csv(file_in("data/customer_churn.csv")) %>%
     initial_split(prop = 0.3),
-  churn_recipe = prepare_recipe(data), #<<
-  history = fit_model(data, churn_recipe, file_out("model.h5")), #<<
-  history_plot = plot(history), #<<
-  conf_matrix = get_conf_matrix( #<<
+  churn_recipe = prepare_recipe(data),
+  history = fit_model(data, churn_recipe, file_out("model.h5")),
+  history_plot = plot(history),
+  conf_matrix = get_conf_matrix(
     data,
     churn_recipe,
     file_in("model.h5")
   ),
-  report_step = rmarkdown::render( #<<
+  report_step = rmarkdown::render(
     knitr_in("results.Rmd"),
     output_file = file_out("results.html"),
     quiet = TRUE
@@ -231,7 +244,6 @@ plan
 ## Run the project in `make.R`
 
 ```{r c6}
-# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R")
@@ -243,7 +255,7 @@ make(plan)
 
 ## Inspect the results.
 
-```{r c7, out.width = "50%", out.height = "50%", fig.width = 5, fig.height = 4}
+```{r c7}
 readd(history_plot) # See also loadd()
 ```
 
@@ -252,17 +264,13 @@ readd(history_plot) # See also loadd()
 ## Update the plan.
 
 ```{r c8}
-# plan.R
 plan <- drake_plan(
-  data = read_csv(
-    file_in("data/customer_churn.csv"),
-    col_types = cols()
-  ) %>%
+  data = read_csv(file_in("data/customer_churn.csv")) %>%
     initial_split(prop = 0.3),
   churn_recipe = prepare_recipe(data),
   history = fit_model(data, churn_recipe, file_out("model.h5")),
   history_plot = plot(history) +
-    theme_bw(), #<<
+    theme_bw(24), #<<
   conf_matrix = get_conf_matrix(
     data,
     churn_recipe,
@@ -289,10 +297,9 @@ tmp <- file.copy("R/plan2.R", "R/plan.R", overwrite = TRUE)
 
 ---
 
-## Refresh the results.
+## Refresh the results in `make.R`.
 
 ```{r c9}
-# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R") # modified
@@ -304,7 +311,7 @@ make(plan)
 
 ## See updated results.
 
-```{r c7updated, out.width = "50%", out.height = "50%", fig.width = 5, fig.height = 4}
+```{r c7updated}
 readd(history_plot)
 ```
 
@@ -321,7 +328,6 @@ readd(conf_matrix)
 ## Evidence of reproducibility.
 
 ```{r c10}
-# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R")
@@ -366,9 +372,10 @@ plan
 
 ## `drake_ggraph()` for large graphs
 
-```{r, plan3graph, echo = FALSE, out.width = "70%", out.height = "70%", fig.width = 6, fig.height = 4}
+```{r, plan3graph, echo = FALSE}
 config <- drake_config(plan)
-drake_ggraph(config, targets_only = TRUE)
+drake_ggraph(config, targets_only = TRUE) +
+  theme_bw(24)
 ```
 
 ---
@@ -376,8 +383,6 @@ drake_ggraph(config, targets_only = TRUE)
 ## High-performance computing.
 
 ```{r c11, eval = FALSE}
-# make.R
-
 # template file with configuration
 drake_hpc_template_file("slurm_clustermq.tmpl")
 
@@ -416,7 +421,7 @@ devtools::install_github("ropensci/drake") # development
 
 ---
 
-## Today's example
+## Thanks
 
 <br>
 <br>
@@ -441,7 +446,7 @@ devtools::install_github("ropensci/drake") # development
 
 ---
 
-## Development
+## Thanks
 
 <table style = "border: none">
 <tr>

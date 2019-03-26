@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="author" content="Will Landau" />
     <link href="index_files/remark-css/default.css" rel="stylesheet" />
-    <link rel="stylesheet" href="footer-header.css" type="text/css" />
+    <link href="index_files/remark-css/default-fonts.css" rel="stylesheet" />
   </head>
   <body>
     <textarea id="source">
@@ -19,6 +19,23 @@ class: center, middle, inverse, title-slide
 
 layout: true
 
+&lt;style&gt;
+.remark-slide-content:after {
+    content: "Copyright Eli Lilly and Company";
+    position: absolute;
+    bottom: -5px;
+    left: 20px;
+    height: 40px;
+    width: 100%;
+    font-family: Helvetica, Arial, sans-serif;
+    color: gray;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+&lt;/style&gt;
+
+---
+
 
 
 ## Purpose: manage long runtimes
@@ -26,11 +43,6 @@ layout: true
 &lt;center&gt;
 &lt;img src = "./images/infographic.svg" align="middle" style="border: none; box-shadow: none; text-align: center;"&gt;
 &lt;/center&gt;
-
-&lt;div class="my-footer"&gt;&lt;span&gt;xaringan power    
-&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;
-&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;&amp;emsp;
-yolo&lt;/span&gt;&lt;/div&gt; 
 
 ---
 
@@ -140,7 +152,6 @@ data/
 
 
 ```r
-# packages.R
 library(drake)
 library(keras)
 library(recipes)
@@ -155,7 +166,6 @@ library(yardstick)
 
 
 ```r
-# functions.R
 prepare_recipe &lt;- function(data) {
   # ... 
 }
@@ -179,22 +189,18 @@ get_conf_matrix &lt;- function(data, churn_recipe, model_file) {
 
 
 ```r
-# plan.R
 plan &lt;- drake_plan(
-* data = read_csv(
-    file_in("data/customer_churn.csv"),
-    col_types = cols()
-  ) %&gt;%
+  data = read_csv(file_in("data/customer_churn.csv")) %&gt;%
     initial_split(prop = 0.3),
-* churn_recipe = prepare_recipe(data),
-* history = fit_model(data, churn_recipe, file_out("model.h5")),
-* history_plot = plot(history),
-* conf_matrix = get_conf_matrix(
+  churn_recipe = prepare_recipe(data),
+  history = fit_model(data, churn_recipe, file_out("model.h5")),
+  history_plot = plot(history),
+  conf_matrix = get_conf_matrix(
     data,
     churn_recipe,
     file_in("model.h5")
   ),
-* report_step = rmarkdown::render(
+  report_step = rmarkdown::render(
     knitr_in("results.Rmd"),
     output_file = file_out("results.html"),
     quiet = TRUE
@@ -209,6 +215,15 @@ plan &lt;- drake_plan(
 
 ```r
 plan
+## # A tibble: 6 x 2
+##   target      command                                                      
+##   &lt;chr&gt;       &lt;expr&gt;                                                       
+## 1 data        read_csv(file_in("data/customer_churn.csv")) %&gt;% initial_spl…
+## 2 churn_reci… prepare_recipe(data)                                        …
+## 3 history     fit_model(data, churn_recipe, file_out("model.h5"))         …
+## 4 history_pl… plot(history)                                               …
+## 5 conf_matrix get_conf_matrix(data, churn_recipe, file_in("model.h5"))    …
+## 6 report_step rmarkdown::render(knitr_in("results.Rmd"), output_file = fil…
 ```
 
 ---
@@ -223,12 +238,17 @@ plan
 
 
 ```r
-# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R")
 
 make(plan)
+## target data
+## target churn_recipe
+## target history
+## target conf_matrix
+## target history_plot
+## target report_step
 ```
 
 ---
@@ -240,23 +260,21 @@ make(plan)
 readd(history_plot) # See also loadd()
 ```
 
+&lt;img src="index_files/figure-html/c7-1.png" width="80%" height="80%" style="display: block; margin: auto;" /&gt;
+
 ---
 
 ## Update the plan.
 
 
 ```r
-# plan.R
 plan &lt;- drake_plan(
-  data = read_csv(
-    file_in("data/customer_churn.csv"),
-    col_types = cols()
-  ) %&gt;%
+  data = read_csv(file_in("data/customer_churn.csv")) %&gt;%
     initial_split(prop = 0.3),
   churn_recipe = prepare_recipe(data),
   history = fit_model(data, churn_recipe, file_out("model.h5")),
   history_plot = plot(history) +
-*   theme_bw(),
+*   theme_bw(24),
   conf_matrix = get_conf_matrix(
     data,
     churn_recipe,
@@ -280,16 +298,17 @@ plan &lt;- drake_plan(
 
 ---
 
-## Refresh the results.
+## Refresh the results in `make.R`.
 
 
 ```r
-# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R") # modified
 
 make(plan)
+## target history_plot
+## target report_step
 ```
 
 ---
@@ -301,6 +320,8 @@ make(plan)
 readd(history_plot)
 ```
 
+&lt;img src="index_files/figure-html/c7updated-1.png" width="80%" height="80%" style="display: block; margin: auto;" /&gt;
+
 ---
 
 ## Continue iterating to improve the model...
@@ -308,6 +329,10 @@ readd(history_plot)
 
 ```r
 readd(conf_matrix)
+##           Truth
+## Prediction   no  yes
+##        no  3202  590
+##        yes  417  713
 ```
 
 ---
@@ -316,12 +341,12 @@ readd(conf_matrix)
 
 
 ```r
-# make.R
 source("R/packages.R")
 source("R/functions.R")
 source("R/plan.R")
 
 make(plan)
+## All targets are already up to date.
 ```
 
 - See also `outdated()`.
@@ -357,13 +382,27 @@ plan &lt;- drake_plan(
 
 ```r
 plan
+## # A tibble: 201 x 2
+##    target   command              
+##    &lt;chr&gt;    &lt;expr&gt;               
+##  1 data_1L  download_dataset(1L) 
+##  2 data_2L  download_dataset(2L) 
+##  3 data_3L  download_dataset(3L) 
+##  4 data_4L  download_dataset(4L) 
+##  5 data_5L  download_dataset(5L) 
+##  6 data_6L  download_dataset(6L) 
+##  7 data_7L  download_dataset(7L) 
+##  8 data_8L  download_dataset(8L) 
+##  9 data_9L  download_dataset(9L) 
+## 10 data_10L download_dataset(10L)
+## # … with 191 more rows
 ```
 
 ---
 
 ## `drake_ggraph()` for large graphs
 
-
+&lt;img src="index_files/figure-html/plan3graph-1.png" width="80%" height="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
@@ -371,8 +410,6 @@ plan
 
 
 ```r
-# make.R
-
 # template file with configuration
 drake_hpc_template_file("slurm_clustermq.tmpl")
 
@@ -412,7 +449,7 @@ devtools::install_github("ropensci/drake") # development
 
 ---
 
-## Today's example
+## Thanks
 
 &lt;br&gt;
 &lt;br&gt;
@@ -437,7 +474,7 @@ devtools::install_github("ropensci/drake") # development
 
 ---
 
-## Development
+## Thanks
 
 &lt;table style = "border: none"&gt;
 &lt;tr&gt;
