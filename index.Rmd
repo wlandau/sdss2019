@@ -2,21 +2,19 @@
 title: "Reproducible computation at scale in R"
 author: Will Landau
 output: 
-  revealjs::revealjs_presentation:
-    transition: none
-    reveal_options:
-      slideNumber: true
-    template: include/template.html
-    includes:
-      in_header: include/header.html
-    css: style.css
+  xaringan::moon_reader:
+    nature:
+      highlightLines: true
 ---
+
+layout: true
 
 ```{r c1, include = FALSE}
 options(
   warnPartialMatchArgs = FALSE,
   drake_clean_menu = FALSE,
-  drake_make_menu = FALSE
+  drake_make_menu = FALSE,
+  htmltools.dir.version = FALSE
 )
 packages <- c(
   "drake",
@@ -37,40 +35,64 @@ clean(destroy = TRUE, verbose = FALSE)
 knitr::opts_chunk$set(
   collapse = TRUE,
   warning = TRUE,
-  error = TRUE
+  error = TRUE,
+  eval = FALSE
 )
 ```
 
 ## Purpose: manage long runtimes
 
-<img src = "./images/infographic.svg" style="border: none; box-shadow: none;">
+<center>
+<img src = "./images/infographic.svg" align="middle" style="border: none; box-shadow: none; text-align: center;">
+</center>
+
+---
 
 ## Data analysis workflows can be complicated.
-<img src = "./images/workflow.png" style="border: none; box-shadow: none;">
+<center>
+<img src = "./images/workflow.png" align="middle" style="border: none; box-shadow: none; text-align: center;">
+</center>
+
+---
 
 ## When you go back and change something...
-<img src = "./images/change.png" style="border: none; box-shadow: none;">
+<center>
+<img src = "./images/change.png" align="middle" style="border: none; box-shadow: none; text-align: center;">
+</center>
+
+---
 
 ## ...everything downstream is **no longer valid**.
-<img src = "./images/downstream.png" style="border: none; box-shadow: none;">
+
+<center>
+<img src = "./images/downstream.png" align="middle" style="border: none; box-shadow: none; text-align: center;">
+</center>
+
+---
 
 ## Do you rerun **everything** from scratch?
 
 - Takes too long.
 - Too frustrating.
 
-<img src = "./images/sisyphus.svg" style="border: none; box-shadow: none; height: 375px">
+<center>
+<img src = "./images/sisyphus.svg" align="middle" style="border: none; box-shadow: none; height: 375px; text-align: center;">
+<div style="font-size: 0.5em; text-align: center"><a href="https://openclipart.org/detail/275842/sisyphus-overcoming-silhouette">https://openclipart.org/detail/275842/sisyphus-overcoming-silhouette</a></div>
+</center>
 
-<div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/275842/sisyphus-overcoming-silhouette">https://openclipart.org/detail/275842/sisyphus-overcoming-silhouette</a></div>
+---
 
 ## Do you manually hunt for pieces to update?
 
 - Messy and prone to human error.
 - Not reproducible.
 
-<img src = "./images/mess.svg" style="border: none; box-shadow: none; height: 400px">
+<center>
+<img src = "./images/mess.svg" align="middle" style="border: none; box-shadow: none; height: 400px; text-align: center;">
+<div style="font-size: 0.5em; text-align: center;"><a href="https://openclipart.org/detail/216179/messy-desk">https://openclipart.org/detail/216179/messy-desk</a></div>
+</center>
 
-<div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/216179/messy-desk">https://openclipart.org/detail/216179/messy-desk</a></div>
+---
 
 ## Pipeline toolkits solve this problem.
 
@@ -81,6 +103,8 @@ knitr::opts_chunk$set(
     - Heavy use of the data frame, even as a substitute for the  traditional [Makefile](https://www.gnu.org/software/make).
     - Native [tidy evaluation](https://tidyeval.tidyverse.org) support.
     - A [domain-specific language (DSL)](http://adv-r.had.co.nz/dsl.html) for [creating large workflows](https://ropenscilabs.github.io/drake-manual/plans.html#large-plans).
+
+---
 
 ## Example uses in the pharmaceutical industry
 
@@ -94,6 +118,8 @@ knitr::opts_chunk$set(
 - PK/PD modeling (e.g. [`mrgsolve`](https://github.com/metrumresearchgroup/mrgsolve))
 - **Deep learning**
 
+---
+
 ## Example deep learning workflow
 
 - Goal: predict customers who cancel their subscriptions with a telecom company.
@@ -104,12 +130,14 @@ knitr::opts_chunk$set(
 
 <div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/90739/newplus">https://openclipart.org/detail/90739/newplus</a>, <a href="https://github.com/rstudio/keras">https://github.com/rstudio/keras</a></div>
 
+---
+
 ## File structure
 
 <br>
 <br>
 
-```
+```{r files, eval = FALSE}
 make.R
 R/
 ├── packages.R
@@ -118,6 +146,8 @@ R/
 data/
 └── customer_churn.csv
 ```
+
+---
 
 ## `packages.R`
 
@@ -130,6 +160,8 @@ library(rsample)
 library(tidyverse)
 library(yardstick)
 ```
+
+---
 
 ## `functions.R`
 
@@ -152,18 +184,27 @@ get_conf_matrix <- function(data, churn_recipe, model_file) {
 }
 ```
 
+---
+
 ## `plan.R`
 
 ```{r c4}
 # plan.R
 plan <- drake_plan(
-  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
+  data = read_csv( #<<
+    file_in("data/customer_churn.csv"),
+    col_types = cols()
+  ) %>%
     initial_split(prop = 0.3),
-  churn_recipe = prepare_recipe(data),
-  history = fit_model(data, churn_recipe, file_out("model.h5")),
-  history_plot = plot(history),
-  conf_matrix = get_conf_matrix(data, churn_recipe, file_in("model.h5")),
-  report_step = rmarkdown::render(
+  churn_recipe = prepare_recipe(data), #<<
+  history = fit_model(data, churn_recipe, file_out("model.h5")), #<<
+  history_plot = plot(history), #<<
+  conf_matrix = get_conf_matrix( #<<
+    data,
+    churn_recipe,
+    file_in("model.h5")
+  ),
+  report_step = rmarkdown::render( #<<
     knitr_in("results.Rmd"),
     output_file = file_out("results.html"),
     quiet = TRUE
@@ -171,15 +212,21 @@ plan <- drake_plan(
 )
 ```
 
+---
+
 ## The plan is a data frame.
 
 ```{r c5}
 plan
 ```
 
+---
+
 ## The workflow
 
 <img src = "./images/tensorflowflow.png" style="border: none; box-shadow: none; height: 250px">
+
+---
 
 ## Run the project in `make.R`
 
@@ -192,24 +239,35 @@ source("R/plan.R")
 make(plan)
 ```
 
+---
+
 ## Inspect the results.
 
 ```{r c7, out.width = "50%", out.height = "50%", fig.width = 5, fig.height = 4}
 readd(history_plot) # See also loadd()
 ```
 
+---
+
 ## Update the plan.
 
 ```{r c8}
 # plan.R
 plan <- drake_plan(
-  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
+  data = read_csv(
+    file_in("data/customer_churn.csv"),
+    col_types = cols()
+  ) %>%
     initial_split(prop = 0.3),
   churn_recipe = prepare_recipe(data),
   history = fit_model(data, churn_recipe, file_out("model.h5")),
   history_plot = plot(history) +
-    theme_bw(), # modification
-  conf_matrix = get_conf_matrix(data, churn_recipe, file_in("model.h5")),
+    theme_bw(), #<<
+  conf_matrix = get_conf_matrix(
+    data,
+    churn_recipe,
+    file_in("model.h5")
+  ),
   report_step = rmarkdown::render(
     knitr_in("results.Rmd"),
     output_file = file_out("results.html"),
@@ -223,9 +281,13 @@ tmp <- file.copy("R/plan.R", "R/tmp.R", overwrite = TRUE)
 tmp <- file.copy("R/plan2.R", "R/plan.R", overwrite = TRUE)
 ```
 
+---
+
 ## `vis_drake_graph()`
 
 <img src = "./images/visdrakegraph.png" style="border: none; box-shadow: none; height: 300px">
+
+---
 
 ## Refresh the results.
 
@@ -238,17 +300,23 @@ source("R/plan.R") # modified
 make(plan)
 ```
 
+---
+
 ## See updated results.
 
 ```{r c7updated, out.width = "50%", out.height = "50%", fig.width = 5, fig.height = 4}
 readd(history_plot)
 ```
 
+---
+
 ## Continue iterating to improve the model...
 
 ```{r c7updated2}
 readd(conf_matrix)
 ```
+
+---
 
 ## Evidence of reproducibility.
 
@@ -261,30 +329,32 @@ source("R/plan.R")
 make(plan)
 ```
 
-<ul style="text-align: left">
-<li>See also `outdated()`.</li>
-</ul>
+- See also `outdated()`.
 
+---
 
 ## Scale up the number of models.
 
 ```{r, plan2}
 dataset_index <- seq_len(50)
+
 plan <- drake_plan(
   data = target(
-    download_dataset(source),
-    transform = map(source = !!dataset_index)
+    download_dataset(from),
+    transform = map(from = !!dataset_index) #<<
   ),
   history = target(
     fit_my_model(data, learning_rate = lr),
-    transform = cross(data, lr = c(1e-5, 1e-4, 1e-3))
+    transform = cross(data, lr = c(1e-5, 1e-4, 1e-3)) #<<
   ),
   best = target(
     get_best_model(history),
-    transform = combine(history)
+    transform = combine(history) #<<
   )
 )
 ```
+
+---
 
 ## Scale up the number of models.
 
@@ -292,12 +362,16 @@ plan <- drake_plan(
 plan
 ```
 
+---
+
 ## `drake_ggraph()` for large graphs
 
 ```{r, plan3graph, echo = FALSE, out.width = "70%", out.height = "70%", fig.width = 6, fig.height = 4}
 config <- drake_config(plan)
 drake_ggraph(config, targets_only = TRUE)
 ```
+
+---
 
 ## High-performance computing.
 
@@ -317,9 +391,13 @@ options(
 make(plan, jobs = 2, parallelism = "clustermq")
 ```
 
+---
+
 ## High-performance computing.
 
-<script src="https://fast.wistia.com/embed/medias/ycczhxwkjw.jsonp" async></script><script src="https://fast.wistia.com/assets/external/E-v1.js" async></script><div class="wistia_responsive_padding" style="padding:56.21% 0 0 0;position:relative;"><div class="wistia_responsive_wrapper" style="height:100%;left:0;position:absolute;top:0;width:100%;"><div class="wistia_embed wistia_async_ycczhxwkjw videoFoam=true" style="height:100%;position:relative;width:100%"><div class="wistia_swatch" style="height:100%;left:0;opacity:0;overflow:hidden;position:absolute;top:0;transition:opacity 200ms;width:100%;"><img src="https://fast.wistia.com/embed/medias/ycczhxwkjw/swatch" style="filter:blur(5px);height:100%;object-fit:contain;width:100%;" alt="" onload="this.parentNode.style.opacity=1;" /></div></div></div></div>
+<iframe width="800" height="450" src="https://www.powtoon.com/embed/bUfSIaXjrw5/" frameborder="0"></iframe>
+
+---
 
 ## Resources
 
@@ -336,25 +414,40 @@ devtools::install_github("ropensci/drake") # development
 - [Contribute code](https://github.com/ropensci/drake/pulls).
 - [Discuss at rOpenSci.org](https://discuss.ropensci.org).
 
+---
+
 ## Today's example
 
 <br>
 <br>
-<ul style = "float: left: width: 49%">
+<table style = "border: none">
+<tr>
+<td style = "padding-right: 125px">
+<ul style>
 <img src = "./images/edgar.jpg" style="border: none; box-shadow: none; height: 150px">
 <li><a href = "https://github.com/edgararuiz">Edgar Ruiz</a></li>
 <li><a href = "https://github.com/sol-eng/tensorflow-w-r/blob/master/workflow/tensorflow-drake.Rmd">example code</a></li>
 </ul>
-<ul style = "float: right; width: 49%">
+</td>
+<td>
+<ul>
 <img src = "./images/matt.jpg" style="border: none; box-shadow: none; height: 150px">
 <li><a href = "https://github.com/mdancho84">Matt Dancho</a></li>
 <li><a href = "https://blogs.rstudio.com/tensorflow/posts/2018-01-11-keras-customer-churn/">blog post</a></li>
 </ul>
+</td>
+</tr>
+</table>
+
+---
 
 ## Development
 
+<table style = "border: none">
+<tr>
+<td>
 <br>
-<ul style = "float: left: width: 49%">
+<ul>
 <img src = "./images/ropensci.png" style="border: none; box-shadow: none; height: 150px">
 <li><a href = "https://github.com/maelle">Maëlle Salmon</a></li>
 <li><a href = "https://github.com/benmarwick">Ben Marwick</a></li>
@@ -364,20 +457,32 @@ devtools::install_github("ropensci/drake") # development
 <li><a href = "https://github.com/richfitz">Rich FitzJohn</a></li>
 <li><a href = "https://github.com/stefaniebutland">Stefanie Butland</a></li>
 </ul>
-<ul style = "float: right; width: 49%">
+</td>
+<td>
+<ul>
 <li><a href = "https://github.com/jarad">Jarad Niemi</a></li>
 <li><a href = "https://github.com/krlmlr">Kirill Müller</a></li>
 <li><a href = "https://github.com/HenrikBengtsson">Henrik Bengtsson</a></li>
+<li><a href = "https://github.com/mschubert">Michael Schubert</a></li>
+<li><a href = "https://github.com/kendonB">Kendon Bell</a></li>
 <li><a href = "https://github.com/milesmcbain">Miles McBain</a></li>
 <li><a href = "https://github.com/pat-s">Patrick Schratz</a></li>
-<li><a href = "https://github.com/kendonB">Kendon Bell</a></li>
 <li><a href = "https://github.com/AlexAxthelm">Alex Axthelm</a></li>
 <li><a href = "https://github.com/dapperjapper">Jasper Clarkberg</a></li>
-<li><a href = "https://github.com/dfalster">Daniel Falster</a></li>
-<li><a href = "https://github.com/mrchypark">Chan-Yub Park</a></li>
+<li><a href = "https://github.com/BListyg">Ben Listyg</a></li>
+<li><a href = "https://github.com/tjmahr">TJ Mahr</a></li>
+<li><a href = "https://github.com/aedobbyn">Amanda Dobbyn</a></li>
 <li><a href = "https://github.com/tiernanmartin">Tiernan Martin</a></li>
-
+<li><a href = "https://github.com/bpbond">Ben Bond-Lamberty</a></li>
+<li><a href = "https://github.com/tmastny">Tim Mastny</a></li>
+<li><a href = "https://github.com/dfalster">Daniel Falster</a></li>
+<li><a href = "https://github.com/rkrug">Rainer Krug</a></li>
+<li><a href = "https://github.com/bmchorse">Brianna McHorse</a></li>
+<li><a href = "https://github.com/mrchypark">Chan-Yub Park</a></li>
 </ul>
+</td>
+</tr>
+</table>
 
 ```{r c13, include = FALSE}
 tmp <- file.copy("R/plan.R", "R/plan2.R", overwrite = TRUE)
