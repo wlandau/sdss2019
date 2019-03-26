@@ -1,6 +1,5 @@
 ---
 title: "Reproducible computation at scale in R"
-subtitle: "With a deep learning example"
 author: Will Landau
 output: 
   revealjs::revealjs_presentation:
@@ -14,7 +13,11 @@ output:
 ---
 
 ```{r c1, include = FALSE}
-options(warnPartialMatchArgs = FALSE, drake_make_menu = FALSE)
+options(
+  warnPartialMatchArgs = FALSE,
+  drake_clean_menu = FALSE,
+  drake_make_menu = FALSE
+)
 packages <- c(
   "drake",
   "keras",
@@ -72,27 +75,36 @@ knitr::opts_chunk$set(
 ## Pipeline toolkits solve this problem.
 
 - Sophisticated, vibrant, active space of tools: [github.com/pditommaso/awesome-pipeline](https://github.com/pditommaso/awesome-pipeline).
-- Most are language-agnostic or designed for Python.
-- [**`drake`**](https://github.com/ropensci/drake) is the most aggressively designed for R.
+- Most are language-agnostic or designed for other languages.
+- [**`drake`**](https://github.com/ropensci/drake) is uniquely devoted to R.
     - A focus on ordinary R functions and variables rather than cumbersome files.
     - Heavy use of the data frame, even as a substitute for the  traditional [Makefile](https://www.gnu.org/software/make).
     - Native [tidy evaluation](https://tidyeval.tidyverse.org) support.
     - A [domain-specific language (DSL)](http://adv-r.had.co.nz/dsl.html) for [creating large workflows](https://ropenscilabs.github.io/drake-manual/plans.html#large-plans).
 
-## Example workflow: deep learning customer churn
+## Example uses in the pharmaceutical industry
 
 <br>
+
+- Clinical trial modeling and simulation
+- Subgroup identification
+- Bayesian network meta analysis
+- Graph-based multiple comparison procedures
+- Bayesian networks in genomics
+- PK/PD modeling (e.g. [`mrgsolve`](https://github.com/metrumresearchgroup/mrgsolve))
+- **Deep learning**
+
+## Example deep learning workflow
 
 - Goal: predict customers who cancel their subscriptions with a telecom company.
 - Data: [IBM Watson Telco Customer Churn dataset](https://www.ibm.com/communities/analytics/watson-analytics-blog/predictive-insights-in-the-telco-customer-churn-data-set/).
-
-<br>
+- Workflow principles generalize to pharma, e.g. business analytics and genomics problems.
 
 <img src = "./images/combine.png" style="border: none; box-shadow: none; height: 200px">
 
 <div style="font-size: 0.5em;"><a href="https://openclipart.org/detail/90739/newplus">https://openclipart.org/detail/90739/newplus</a>, <a href="https://github.com/rstudio/keras">https://github.com/rstudio/keras</a></div>
 
-## Project files
+## File structure
 
 <br>
 <br>
@@ -169,7 +181,7 @@ plan
 
 <img src = "./images/tensorflowflow.png" style="border: none; box-shadow: none; height: 250px">
 
-## Run the project.
+## Run the project in `make.R`
 
 ```{r c6}
 # make.R
@@ -261,20 +273,15 @@ make(plan)
 ## Scale up the number of models.
 
 ```{r, plan2}
-data_source_index <- seq_len(25)
+dataset_index <- seq_len(50)
 plan <- drake_plan(
   data = target(
     download_dataset(source),
-    transform = map(source = !!data_source_index)
+    transform = map(source = !!dataset_index)
   ),
   history = target(
-    fit_my_model(data, batch_size = bz, rate = lr, dropout = dr),
-    transform = cross(
-      data,
-      bz = c(8, 16, 32, 64),
-      lr = c(1e-5, 1e-4, 1e-3),
-      dr = c(0.2, 0.3, 0.4, 0.5)
-    )
+    fit_my_model(data, learning_rate = lr),
+    transform = cross(data, lr = c(1e-5, 1e-4, 1e-3))
   ),
   best = target(
     get_best_model(history),
@@ -287,6 +294,13 @@ plan <- drake_plan(
 
 ```{r, plan3}
 plan
+```
+
+## `drake_ggraph()` for large graphs
+
+```{r, plan3graph, echo = FALSE, out.width = "70%", out.height = "70%", fig.width = 6, fig.height = 4}
+config <- drake_config(plan)
+drake_ggraph(config, targets_only = TRUE)
 ```
 
 ## High-performance computing.
@@ -318,7 +332,7 @@ install.packages("drake")                  # release
 devtools::install_github("ropensci/drake") # development
 ```
 
-- [Today's code](https://github.com/wlandau/drake-examples/tree/master/tensorflow): `drake_example("tensorflow")`
+- [Today's code](https://github.com/wlandau/drake-examples/tree/master/deep-learning): `drake_example("deep-learning")`
 - [Reference website](https://ropensci.github.io/drake/)
 - [Full user manual](https://ropenscilabs.github.io/drake-manual/)
 - [Example workflows](https://github.com/wlandau/drake-examples)
