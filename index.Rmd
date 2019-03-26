@@ -227,10 +227,6 @@ tmp <- file.copy("R/plan2.R", "R/plan.R", overwrite = TRUE)
 
 <img src = "./images/visdrakegraph.png" style="border: none; box-shadow: none; height: 300px">
 
-<ul style="text-align: left">
-<li>See also `drake_ggraph()` and `sankey_drake_graph()`</li>
-</ul>
-
 ## Refresh the results.
 
 ```{r c9}
