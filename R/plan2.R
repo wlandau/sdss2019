@@ -1,4 +1,4 @@
-batch_sizes <- c(16, 32, 256)
+batch_sizes <- c(16, 32, 64)
 
 plan <- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
