@@ -97,14 +97,14 @@ knitr::opts_chunk$set(
 
 ---
 
-## When you go back and change something...
+## When change something...
 <center>
 <img src = "./images/change.png" align="middle" style="border: none; box-shadow: none; text-align: center;">
 </center>
 
 ---
 
-## ...everything downstream is **no longer valid**.
+## ...downstream steps are **no longer valid**.
 
 <center>
 <img src = "./images/downstream.png" align="middle" style="border: none; box-shadow: none; text-align: center;">
@@ -211,11 +211,11 @@ prepare_recipe <- function(data) {
   # ... 
 }
 
-define_model <- function(rec, dropout) {
+define_model <- function(rec) {
   # ...
 }
 
-train_model <- function(data, rec, dropout) {
+train_model <- function(data, batch_size) {
   # ...
 }
 
@@ -233,19 +233,19 @@ compare_models <- function(...) {
 ## plan.R
 
 ```{r c4}
-dropout_rate <- seq(0.1, 0.2, by = 0.1)
+batch_sizes <- c(16, 32)
 
 plan <- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv")) %>%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, dropout),
-    transform = map(dropout = !!dropout_rate)
+    train_model(data, rec, batch_size),
+    transform = map(batch_size = !!batch_sizes)
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model)
+    transform = map(model, .id = batch_size)
   ),
   comparison = target(
     compare_models(conf),
@@ -293,22 +293,22 @@ readd(comparison) # See also loadd()
 
 ---
 
-## Try more models.
+## Try another batch size.
 
 ```{r c8}
-dropout_rate <- seq(0.1, 0.4, by = 0.1) #<<
+batch_sizes <- c(16, 32, 256) #<<
 
 plan <- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv")) %>%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, dropout),
-    transform = map(dropout = !!dropout_rate) #<<
+    train_model(data, rec, batch_size),
+    transform = map(batch_size = !!batch_sizes) #<<
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model)
+    transform = map(model, .id = batch_size)
   ),
   comparison = target(
     compare_models(conf),
@@ -344,7 +344,7 @@ make(plan)
 
 ---
 
-## Compare more models.
+## Compare models.
 
 ```{r c7updated}
 readd(comparison)

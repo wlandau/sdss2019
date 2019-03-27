@@ -76,14 +76,14 @@ class: center, middle, inverse, title-slide
 
 ---
 
-## When you go back and change something...
+## When change something...
 &lt;center&gt;
 &lt;img src = "./images/change.png" align="middle" style="border: none; box-shadow: none; text-align: center;"&gt;
 &lt;/center&gt;
 
 ---
 
-## ...everything downstream is **no longer valid**.
+## ...downstream steps are **no longer valid**.
 
 &lt;center&gt;
 &lt;img src = "./images/downstream.png" align="middle" style="border: none; box-shadow: none; text-align: center;"&gt;
@@ -193,11 +193,11 @@ prepare_recipe &lt;- function(data) {
   # ... 
 }
 
-define_model &lt;- function(rec, dropout) {
+define_model &lt;- function(rec) {
   # ...
 }
 
-train_model &lt;- function(data, rec, dropout) {
+train_model &lt;- function(data, batch_size) {
   # ...
 }
 
@@ -216,19 +216,19 @@ compare_models &lt;- function(...) {
 
 
 ```r
-dropout_rate &lt;- seq(0.1, 0.2, by = 0.1)
+batch_sizes &lt;- c(16, 32)
 
 plan &lt;- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv")) %&gt;%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, dropout),
-    transform = map(dropout = !!dropout_rate)
+    train_model(data, rec, batch_size),
+    transform = map(batch_size = !!batch_sizes)
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model)
+    transform = map(model, .id = batch_size)
   ),
   comparison = target(
     compare_models(conf),
@@ -245,15 +245,15 @@ plan &lt;- drake_plan(
 ```r
 plan
 ## # A tibble: 7 x 2
-##   target        command                                                    
-##   &lt;chr&gt;         &lt;expr&gt;                                                     
-## 1 data          read_csv(file_in("data/customer_churn.csv")) %&gt;% initial_s…
-## 2 rec           prepare_recipe(data)                                      …
-## 3 model_0.1     train_model(data, rec, 0.1)                               …
-## 4 model_0.2     train_model(data, rec, 0.2)                               …
-## 5 conf_model_0… confusion_matrix(data, rec, model_0.1)                    …
-## 6 conf_model_0… confusion_matrix(data, rec, model_0.2)                    …
-## 7 comparison    compare_models(conf_model_0.1, conf_model_0.2)            …
+##   target     command                                                       
+##   &lt;chr&gt;      &lt;expr&gt;                                                        
+## 1 data       read_csv(file_in("data/customer_churn.csv")) %&gt;% initial_spli…
+## 2 rec        prepare_recipe(data)                                         …
+## 3 model_16   train_model(data, rec, 16)                                   …
+## 4 model_32   train_model(data, rec, 32)                                   …
+## 5 conf_16    confusion_matrix(data, rec, model_16)                        …
+## 6 conf_32    confusion_matrix(data, rec, model_32)                        …
+## 7 comparison compare_models(conf_16, conf_32)                             …
 ```
 
 ---
@@ -278,10 +278,10 @@ source("R/plan.R")
 make(plan)
 ## target data
 ## target rec
-## target model_0.1
-## target model_0.2
-## target conf_model_0.1
-## target conf_model_0.2
+## target model_16
+## target model_32
+## target conf_16
+## target conf_32
 ## target comparison
 ```
 
@@ -298,23 +298,23 @@ readd(comparison) # See also loadd()
 
 ---
 
-## Try more models.
+## Try another batch size.
 
 
 ```r
-*dropout_rate &lt;- seq(0.1, 0.4, by = 0.1)
+*batch_sizes &lt;- c(16, 32, 256)
 
 plan &lt;- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv")) %&gt;%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, dropout),
-*   transform = map(dropout = !!dropout_rate)
+    train_model(data, rec, batch_size),
+*   transform = map(batch_size = !!batch_sizes)
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model)
+    transform = map(model, .id = batch_size)
   ),
   comparison = target(
     compare_models(conf),
@@ -344,16 +344,14 @@ source("R/functions.R")
 *source("R/plan.R") # modified
 
 make(plan)
-## target model_0.3
-## target model_0.4
-## target conf_model_0.3
-## target conf_model_0.4
+## target model_256
+## target conf_256
 ## target comparison
 ```
 
 ---
 
-## Compare more models.
+## Compare models.
 
 
 ```r
