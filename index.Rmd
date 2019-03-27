@@ -7,24 +7,47 @@ output:
       highlightLines: true
 ---
 
-layout: true
-
 <style>
+.inverse {
+  background-color: transparent;
+  text-shadow: 0 0 0px transparent;
+}
+.title-slide {
+  vertical-align: bottom !important; 
+  text-align: center !important;
+}
+.title-slide h1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  line-height: 4em;
+  color: #666666;
+}
+.title-slide h3 {
+  line-height: 6em;
+  color: #666666;
+}
+.title-slide {
+  background-color: white;
+  background-image: url('images/logo.png');
+  background-repeat: no-repeat;
+  background-size: 25%;
+}
 .remark-slide-content:after {
-    content: "Copyright Eli Lilly and Company";
-    position: absolute;
-    bottom: -5px;
-    left: 20px;
-    height: 40px;
-    width: 100%;
-    font-family: Helvetica, Arial, sans-serif;
-    color: gray;
-    background-repeat: no-repeat;
-    background-size: contain;
+  content: "Copyright Eli Lilly and Company";
+  position: absolute;
+  bottom: -5px;
+  left: 20px;
+  height: 40px;
+  width: 100%;
+  font-family: Helvetica, Arial, sans-serif;
+  color: gray;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 </style>
-
----
 
 ```{r c1, include = FALSE}
 options(
@@ -59,7 +82,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Purpose: manage long runtimes
+## Purpose: manage data analyses with long runtimes
 
 <center>
 <img src = "./images/infographic.svg" align="middle" style="border: none; box-shadow: none; text-align: center;">
@@ -67,7 +90,7 @@ knitr::opts_chunk$set(
 
 ---
 
-## Data analysis workflows can be complicated.
+## Workflows have interconnected steps.
 <center>
 <img src = "./images/workflow.png" align="middle" style="border: none; box-shadow: none; text-align: center;">
 </center>
@@ -101,7 +124,7 @@ knitr::opts_chunk$set(
 
 ---
 
-## Do you manually hunt for pieces to update?
+## Do you pick and choose pieces to update?
 
 - Messy and prone to human error.
 - Not reproducible.
@@ -168,7 +191,7 @@ data/
 
 ---
 
-## `packages.R`
+## packages.R
 
 ```{r c2, eval = FALSE}
 library(drake)
@@ -181,53 +204,59 @@ library(yardstick)
 
 ---
 
-## `functions.R`
+## functions.R
 
 ```{r c3, eval = FALSE}
 prepare_recipe <- function(data) {
   # ... 
 }
 
-define_model <- function(churn_recipe) {
+define_model <- function(rec, dropout) {
   # ...
 }
 
-fit_model <- function(data, churn_recipe, model_file) {
+train_model <- function(data, rec, dropout) {
   # ...
 }
 
-get_conf_matrix <- function(data, churn_recipe, model_file) {
+confusion_matrix <- function(data, rec, serialized_model) {
+  # ...
+}
+
+compare_models <- function(...) {
   # ...
 }
 ```
 
 ---
 
-## `plan.R`
+## plan.R
 
 ```{r c4}
+dropout_rate <- seq(0.1, 0.2, by = 0.1)
+
 plan <- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv")) %>%
     initial_split(prop = 0.3),
-  churn_recipe = prepare_recipe(data),
-  history = fit_model(data, churn_recipe, file_out("model.h5")),
-  history_plot = plot(history),
-  conf_matrix = get_conf_matrix(
-    data,
-    churn_recipe,
-    file_in("model.h5")
+  rec = prepare_recipe(data),
+  model = target(
+    train_model(data, rec, dropout),
+    transform = map(dropout = !!dropout_rate)
   ),
-  report_step = rmarkdown::render(
-    knitr_in("results.Rmd"),
-    output_file = file_out("results.html"),
-    quiet = TRUE
+  conf = target(
+    confusion_matrix(data, rec, model),
+    transform = map(model)
+  ),
+  comparison = target(
+    compare_models(conf),
+    transform = combine(conf)
   )
 )
 ```
 
 ---
 
-## The plan is a data frame.
+## Data frame of workflow steps
 
 ```{r c5}
 plan
@@ -237,11 +266,14 @@ plan
 
 ## The workflow
 
-<img src = "./images/tensorflowflow.png" style="border: none; box-shadow: none; height: 250px">
+<br>
+<center>
+<img align="middle" src = "./images/vis1.png" style="border: none; box-shadow: none;">
+</center>
 
 ---
 
-## Run the project in `make.R`
+## Run the project in make.R.
 
 ```{r c6}
 source("R/packages.R")
@@ -253,33 +285,34 @@ make(plan)
 
 ---
 
-## Inspect the results.
+## Compare models.
 
 ```{r c7}
-readd(history_plot) # See also loadd()
+readd(comparison) # See also loadd()
 ```
 
 ---
 
-## Update the plan.
+## Try more models.
 
 ```{r c8}
+dropout_rate <- seq(0.1, 0.4, by = 0.1) #<<
+
 plan <- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv")) %>%
     initial_split(prop = 0.3),
-  churn_recipe = prepare_recipe(data),
-  history = fit_model(data, churn_recipe, file_out("model.h5")),
-  history_plot = plot(history) +
-    theme_bw(24), #<<
-  conf_matrix = get_conf_matrix(
-    data,
-    churn_recipe,
-    file_in("model.h5")
+  rec = prepare_recipe(data),
+  model = target(
+    train_model(data, rec, dropout),
+    transform = map(dropout = !!dropout_rate) #<<
   ),
-  report_step = rmarkdown::render(
-    knitr_in("results.Rmd"),
-    output_file = file_out("results.html"),
-    quiet = TRUE
+  conf = target(
+    confusion_matrix(data, rec, model),
+    transform = map(model)
+  ),
+  comparison = target(
+    compare_models(conf),
+    transform = combine(conf)
   )
 )
 ```
@@ -291,36 +324,30 @@ tmp <- file.copy("R/plan2.R", "R/plan.R", overwrite = TRUE)
 
 ---
 
-## `vis_drake_graph()`
+## vis_drake_graph()
 
-<img src = "./images/visdrakegraph.png" style="border: none; box-shadow: none; height: 300px">
+<center>
+<img align="middle" src = "./images/vis2.png" style="border: none; box-shadow: none;">
+</center>
 
 ---
 
-## Refresh the results in `make.R`.
+## Refresh the results in make.R.
 
 ```{r c9}
 source("R/packages.R")
 source("R/functions.R")
-source("R/plan.R") # modified
+source("R/plan.R") # modified #<<
 
 make(plan)
 ```
 
 ---
 
-## See updated results.
+## Compare more models.
 
 ```{r c7updated}
-readd(history_plot)
-```
-
----
-
-## Continue iterating to improve the model...
-
-```{r c7updated2}
-readd(conf_matrix)
+readd(comparison)
 ```
 
 ---
@@ -336,47 +363,6 @@ make(plan)
 ```
 
 - See also `outdated()`.
-
----
-
-## Scale up the number of models.
-
-```{r, plan2}
-dataset_index <- seq_len(50)
-
-plan <- drake_plan(
-  data = target(
-    download_dataset(from),
-    transform = map(from = !!dataset_index) #<<
-  ),
-  history = target(
-    fit_my_model(data, learning_rate = lr),
-    transform = cross(data, lr = c(1e-5, 1e-4, 1e-3)) #<<
-  ),
-  best = target(
-    get_best_model(history),
-    transform = combine(history) #<<
-  )
-)
-```
-
----
-
-## Scale up the number of models.
-
-```{r, plan3}
-plan
-```
-
----
-
-## `drake_ggraph()` for large graphs
-
-```{r, plan3graph, echo = FALSE}
-config <- drake_config(plan)
-drake_ggraph(config, targets_only = TRUE) +
-  theme_bw(24)
-```
 
 ---
 
@@ -474,12 +460,13 @@ devtools::install_github("ropensci/drake") # development
 <li><a href = "https://github.com/pat-s">Patrick Schratz</a></li>
 <li><a href = "https://github.com/AlexAxthelm">Alex Axthelm</a></li>
 <li><a href = "https://github.com/dapperjapper">Jasper Clarkberg</a></li>
+<li><a href = "https://github.com/tiernanmartin">Tiernan Martin</a></li>
 <li><a href = "https://github.com/BListyg">Ben Listyg</a></li>
 <li><a href = "https://github.com/tjmahr">TJ Mahr</a></li>
-<li><a href = "https://github.com/aedobbyn">Amanda Dobbyn</a></li>
-<li><a href = "https://github.com/tiernanmartin">Tiernan Martin</a></li>
 <li><a href = "https://github.com/bpbond">Ben Bond-Lamberty</a></li>
 <li><a href = "https://github.com/tmastny">Tim Mastny</a></li>
+<li><a href = "https://github.com/billdenney">Bill Denney</a></li>
+<li><a href = "https://github.com/aedobbyn">Amanda Dobbyn</a></li>
 <li><a href = "https://github.com/dfalster">Daniel Falster</a></li>
 <li><a href = "https://github.com/rkrug">Rainer Krug</a></li>
 <li><a href = "https://github.com/bmchorse">Brianna McHorse</a></li>

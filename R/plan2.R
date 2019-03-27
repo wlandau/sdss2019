@@ -1,14 +1,19 @@
+dropout_rate <- seq(0.1, 0.4, by = 0.1)
+
 plan <- drake_plan(
   data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
     initial_split(prop = 0.3),
-  churn_recipe = prepare_recipe(data),
-  history = fit_model(data, churn_recipe, file_out("model.h5")),
-  history_plot = plot(history) +
-    theme_bw(24),
-  conf_matrix = get_conf_matrix(data, churn_recipe, file_in("model.h5")),
-  report_step = rmarkdown::render(
-    knitr_in("results.Rmd"),
-    output_file = file_out("results.html"),
-    quiet = TRUE
+  rec = prepare_recipe(data),
+  model = target(
+    train_model(data, rec, dropout),
+    transform = map(dropout = !!dropout_rate)
+  ),
+  conf = target(
+    confusion_matrix(data, rec, model),
+    transform = map(model)
+  ),
+  comparison = target(
+    compare_models(conf),
+    transform = combine(conf)
   )
 )

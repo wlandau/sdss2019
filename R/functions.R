@@ -13,9 +13,9 @@ prepare_recipe <- function(data) {
     prep()
 }
 
-define_model <- function(churn_recipe) {
+define_model <- function(rec, dropout) {
   input_shape <- ncol(
-    juice(churn_recipe, all_predictors(), composition = "matrix")
+    juice(rec, all_predictors(), composition = "matrix")
   )
   keras_model_sequential() %>%
     layer_dense(
@@ -24,13 +24,13 @@ define_model <- function(churn_recipe) {
       activation = "relu",
       input_shape = input_shape
     ) %>%
-    layer_dropout(rate = 0.1) %>%
+    layer_dropout(rate = dropout) %>%
     layer_dense(
       units = 16,
       kernel_initializer = "uniform",
       activation = "relu"
     ) %>%
-    layer_dropout(rate = 0.1) %>%
+    layer_dropout(rate = dropout) %>%
     layer_dense(
       units = 1,
       kernel_initializer = "uniform",
@@ -38,8 +38,8 @@ define_model <- function(churn_recipe) {
     )
 }
 
-fit_model <- function(data, churn_recipe, model_file) {
-  model <- define_model(churn_recipe)
+train_model <- function(data, rec, dropout) {
+  model <- define_model(rec, dropout)
   compile(
     model,
     optimizer = "adam",
@@ -47,13 +47,13 @@ fit_model <- function(data, churn_recipe, model_file) {
     metrics = c("accuracy")
   )
   x_train_tbl <- juice(
-    churn_recipe,
+    rec,
     all_predictors(),
     composition = "matrix"
   )
-  y_train_vec <- juice(churn_recipe, all_outcomes()) %>%
+  y_train_vec <- juice(rec, all_outcomes()) %>%
     pull()
-  history <- fit(
+  fit(
     object = model,
     x = x_train_tbl,
     y = y_train_vec,
@@ -62,13 +62,12 @@ fit_model <- function(data, churn_recipe, model_file) {
     validation_split = 0.30,
     verbose = 0
   )
-  save_model_hdf5(model, model_file)
-  history
+  serialize_model(model)
 }
 
-get_conf_matrix <- function(data, churn_recipe, model_file) {
-  model <- load_model_hdf5(model_file)
-  testing_data <- bake(churn_recipe, testing(data))
+confusion_matrix <- function(data, rec, serialized_model) {
+  model <- unserialize_model(serialized_model)
+  testing_data <- bake(rec, testing(data))
   x_test_tbl <- testing_data %>%
     select(-Churn) %>%
     as.matrix()
@@ -93,4 +92,18 @@ get_conf_matrix <- function(data, churn_recipe, model_file) {
   )
   estimates_keras_tbl %>%
     conf_mat(truth, estimate)
+}
+
+compare_models <- function(...) {
+  models <- as.character(match.call()[-1]) %>%
+    gsub(pattern = "conf_", replacement = "")
+  df <- map_df(list(...), summary) %>%
+    filter(.metric %in% c("accuracy", "sens", "spec")) %>%
+    mutate(model = rep(models, each = n() / length(models))) %>%
+    rename(metric = .metric, estimate = .estimate)
+  ggplot(df) +
+    geom_line(
+      aes(x = metric, y = estimate, color = model, group = model)
+    ) +
+    theme_gray(30)
 }
