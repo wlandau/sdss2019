@@ -197,7 +197,7 @@ define_model &lt;- function(rec) {
   # ...
 }
 
-train_model &lt;- function(data, batch_size) {
+train_model &lt;- function(data, rec, units1, units2, act1, act2, act3) {
   # ...
 }
 
@@ -216,21 +216,21 @@ compare_models &lt;- function(...) {
 
 
 ```r
-batch_sizes &lt;- c(16, 32)
+activations &lt;- c("relu", "sigmoid")
 
 plan &lt;- drake_plan(
-  data = read_csv(file_in("data/customer_churn.csv")) %&gt;%
+  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %&gt;%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, batch_size),
-    transform = map(batch_size = !!batch_sizes)
+    train_model(data, rec, act1 = act),
+    transform = map(act = !!activations)
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model, .id = batch_size)
+    transform = map(model, .id = act)
   ),
-  comparison = target(
+  metrics = target(
     compare_models(conf),
     transform = combine(conf)
   )
@@ -245,15 +245,15 @@ plan &lt;- drake_plan(
 ```r
 plan
 ## # A tibble: 7 x 2
-##   target     command                                                       
-##   &lt;chr&gt;      &lt;expr&gt;                                                        
-## 1 data       read_csv(file_in("data/customer_churn.csv")) %&gt;% initial_spli…
-## 2 rec        prepare_recipe(data)                                         …
-## 3 model_16   train_model(data, rec, 16)                                   …
-## 4 model_32   train_model(data, rec, 32)                                   …
-## 5 conf_16    confusion_matrix(data, rec, model_16)                        …
-## 6 conf_32    confusion_matrix(data, rec, model_32)                        …
-## 7 comparison compare_models(conf_16, conf_32)                             …
+##   target       command                                                     
+##   &lt;chr&gt;        &lt;expr&gt;                                                      
+## 1 data         read_csv(file_in("data/customer_churn.csv"), col_types = co…
+## 2 rec          prepare_recipe(data)                                       …
+## 3 model_relu   train_model(data, rec, act1 = "relu")                      …
+## 4 model_sigmo… train_model(data, rec, act1 = "sigmoid")                   …
+## 5 conf_relu    confusion_matrix(data, rec, model_relu)                    …
+## 6 conf_sigmoid confusion_matrix(data, rec, model_sigmoid)                 …
+## 7 metrics      compare_models(conf_relu, conf_sigmoid)                    …
 ```
 
 ---
@@ -278,11 +278,11 @@ source("R/plan.R")
 make(plan)
 ## target data
 ## target rec
-## target model_16
-## target model_32
-## target conf_16
-## target conf_32
-## target comparison
+## target model_relu
+## target model_sigmoid
+## target conf_relu
+## target conf_sigmoid
+## target metrics
 ```
 
 ---
@@ -291,32 +291,32 @@ make(plan)
 
 
 ```r
-readd(comparison) # See also loadd()
+readd(metrics) # See also loadd()
 ```
 
 &lt;img src="index_files/figure-html/c7-1.png" width="80%" height="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
-## Try another batch size.
+## Try another activation function.
 
 
 ```r
-*batch_sizes &lt;- c(16, 32, 64)
+*activations &lt;- c("relu", "sigmoid", "softmax")
 
 plan &lt;- drake_plan(
-  data = read_csv(file_in("data/customer_churn.csv")) %&gt;%
+  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %&gt;%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, batch_size),
-*   transform = map(batch_size = !!batch_sizes)
+    train_model(data, rec, act1 = act),
+*   transform = map(act = !!activations)
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model, .id = batch_size)
+    transform = map(model, .id = act)
   ),
-  comparison = target(
+  metrics = target(
     compare_models(conf),
     transform = combine(conf)
   )
@@ -344,9 +344,9 @@ source("R/functions.R")
 *source("R/plan.R") # modified
 
 make(plan)
-## target model_64
-## target conf_64
-## target comparison
+## target model_softmax
+## target conf_softmax
+## target metrics
 ```
 
 ---
@@ -355,14 +355,14 @@ make(plan)
 
 
 ```r
-readd(comparison)
+readd(metrics)
 ```
 
 &lt;img src="index_files/figure-html/c7updated-1.png" width="80%" height="80%" style="display: block; margin: auto;" /&gt;
 
 ---
 
-## Evidence of reproducibility.
+## Evidence of reproducibility
 
 
 ```r
@@ -378,7 +378,7 @@ make(plan)
 
 ---
 
-## High-performance computing.
+## High-performance computing
 
 
 ```r
@@ -397,7 +397,7 @@ make(plan, jobs = 2, parallelism = "clustermq")
 
 ---
 
-## High-performance computing.
+## High-performance computing
 
 &lt;iframe width="800" height="450" src="https://www.powtoon.com/embed/bUfSIaXjrw5/" frameborder="0"&gt;&lt;/iframe&gt;
 

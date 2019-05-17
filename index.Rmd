@@ -216,7 +216,7 @@ define_model <- function(rec) {
   # ...
 }
 
-train_model <- function(data, batch_size) {
+train_model <- function(data, rec, units1, units2, act1, act2, act3) {
   # ...
 }
 
@@ -234,21 +234,21 @@ compare_models <- function(...) {
 ## plan.R
 
 ```{r c4}
-batch_sizes <- c(16, 32)
+activations <- c("relu", "sigmoid")
 
 plan <- drake_plan(
-  data = read_csv(file_in("data/customer_churn.csv")) %>%
+  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, batch_size),
-    transform = map(batch_size = !!batch_sizes)
+    train_model(data, rec, act1 = act),
+    transform = map(act = !!activations)
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model, .id = batch_size)
+    transform = map(model, .id = act)
   ),
-  comparison = target(
+  metrics = target(
     compare_models(conf),
     transform = combine(conf)
   )
@@ -289,29 +289,29 @@ make(plan)
 ## Compare models.
 
 ```{r c7}
-readd(comparison) # See also loadd()
+readd(metrics) # See also loadd()
 ```
 
 ---
 
-## Try another batch size.
+## Try another activation function.
 
 ```{r c8}
-batch_sizes <- c(16, 32, 64) #<<
+activations <- c("relu", "sigmoid", "softmax") #<<
 
 plan <- drake_plan(
-  data = read_csv(file_in("data/customer_churn.csv")) %>%
+  data = read_csv(file_in("data/customer_churn.csv"), col_types = cols()) %>%
     initial_split(prop = 0.3),
   rec = prepare_recipe(data),
   model = target(
-    train_model(data, rec, batch_size),
-    transform = map(batch_size = !!batch_sizes) #<<
+    train_model(data, rec, act1 = act),
+    transform = map(act = !!activations) #<<
   ),
   conf = target(
     confusion_matrix(data, rec, model),
-    transform = map(model, .id = batch_size)
+    transform = map(model, .id = act)
   ),
-  comparison = target(
+  metrics = target(
     compare_models(conf),
     transform = combine(conf)
   )
@@ -348,12 +348,12 @@ make(plan)
 ## Compare models.
 
 ```{r c7updated}
-readd(comparison)
+readd(metrics)
 ```
 
 ---
 
-## Evidence of reproducibility.
+## Evidence of reproducibility
 
 ```{r c10}
 source("R/packages.R")
@@ -367,7 +367,7 @@ make(plan)
 
 ---
 
-## High-performance computing.
+## High-performance computing
 
 ```{r c11, eval = FALSE}
 # template file with configuration
@@ -385,7 +385,7 @@ make(plan, jobs = 2, parallelism = "clustermq")
 
 ---
 
-## High-performance computing.
+## High-performance computing
 
 <iframe width="800" height="450" src="https://www.powtoon.com/embed/bUfSIaXjrw5/" frameborder="0"></iframe>
 
